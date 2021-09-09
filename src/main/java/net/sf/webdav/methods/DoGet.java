@@ -33,7 +33,7 @@ import net.sf.webdav.IWebdavStore;
 import net.sf.webdav.StoredObject;
 import net.sf.webdav.WebdavStatus;
 import net.sf.webdav.locking.ResourceLocks;
-import org.apache.tomcat.util.http.fileupload.IOUtils;
+import org.apache.commons.io.IOUtils;
 
 public class DoGet extends DoHead {
 

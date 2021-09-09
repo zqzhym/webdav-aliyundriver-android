@@ -9,6 +9,7 @@ import net.sf.webdav.StoredObject;
 import net.sf.webdav.Transaction;
 import net.sf.webdav.exceptions.WebdavException;
 import okhttp3.Response;
+import org.eclipse.jetty.http.HttpHeaders;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 
@@ -25,7 +26,7 @@ import java.util.Set;
 public class AliYunDriverFileSystemStore implements IWebdavStore {
     private static final Logger LOGGER = LoggerFactory.getLogger(AliYunDriverFileSystemStore.class);
 
-    private static AliYunDriverClientService aliYunDriverClientService;
+    private static AliYunDriverClientService aliYunDriverClientService = AliYunDriverClientService.getInstance();
 
     public AliYunDriverFileSystemStore(File file) {
     }
@@ -89,7 +90,7 @@ public class AliYunDriverFileSystemStore implements IWebdavStore {
         HttpServletResponse response = transaction.getResponse();
         long size = getResourceLength(transaction, resourceUri);
         Response downResponse = aliYunDriverClientService.download(resourceUri, transaction.getRequest(), size);
-        response.setContentLengthLong(downResponse.body().contentLength());
+        response.setHeader(HttpHeaders.CONTENT_LENGTH, String.valueOf(downResponse.body().contentLength()));
         LOGGER.debug("{} code = {}", resourceUri, downResponse.code());
         for (String name : downResponse.headers().names()) {
             LOGGER.debug("{} downResponse: {} = {}", resourceUri, name, downResponse.header(name));

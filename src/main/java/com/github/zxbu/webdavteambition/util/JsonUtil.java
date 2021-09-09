@@ -113,7 +113,7 @@ public class JsonUtil {
     private static JsonNode getJsonNode(String responseBody) {
         try {
             return objectMapper.readTree(responseBody);
-        } catch (JsonProcessingException e) {
+        } catch (IOException e) {
             throw new WebdavException(e);
         }
     }

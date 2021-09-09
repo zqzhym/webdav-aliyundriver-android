@@ -1,66 +1,98 @@
 package com.github.zxbu.webdavteambition.store;
 
+import android.content.Context;
+
 import com.fasterxml.jackson.core.type.TypeReference;
 import com.fasterxml.jackson.databind.ObjectMapper;
-import com.github.benmanes.caffeine.cache.Cache;
-import com.github.benmanes.caffeine.cache.Caffeine;
 import com.github.zxbu.webdavteambition.client.AliYunDriverClient;
+import com.github.zxbu.webdavteambition.config.AliYunDriveProperties;
 import com.github.zxbu.webdavteambition.model.*;
 import com.github.zxbu.webdavteambition.model.result.TFile;
 import com.github.zxbu.webdavteambition.model.result.TFileListResult;
 import com.github.zxbu.webdavteambition.model.result.UploadPreResult;
 import com.github.zxbu.webdavteambition.util.JsonUtil;
+import com.google.common.cache.CacheBuilder;
+import com.google.common.cache.CacheLoader;
+import com.google.common.cache.LoadingCache;
+
 import net.sf.webdav.exceptions.WebdavException;
+
 import okhttp3.HttpUrl;
 import okhttp3.Response;
-import org.apache.tomcat.util.http.fileupload.IOUtils;
+
+import org.apache.commons.io.IOUtils;
+import org.apache.commons.lang3.StringUtils;
+import org.eclipse.jetty.server.handler.ContextHandler;
+import org.eclipse.jetty.webapp.WebAppContext;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.stereotype.Service;
-import org.springframework.util.StringUtils;
 
 import javax.servlet.http.HttpServletRequest;
+
+import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.util.*;
-import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.ExecutionException;
 import java.util.concurrent.TimeUnit;
 
-@Service
 public class AliYunDriverClientService {
+
+    private static class Holder {
+        private static AliYunDriverClientService sAliYunDriverClientService;
+
+        static {
+            ContextHandler.Context webContext = WebAppContext.getCurrentContext();
+            Context context = (Context) webContext.getAttribute("org.mortbay.ijetty.context");
+            AliYunDriveProperties properties = new AliYunDriveProperties();
+            properties.setRefreshToken(String.valueOf(webContext.getAttribute(context.getString(net.xdow.library.R.string.config_refresh_token))));
+            properties.setWorkDir(context.getFilesDir().getAbsolutePath() + File.separator);
+            sAliYunDriverClientService = new AliYunDriverClientService(new AliYunDriverClient(properties));
+        }
+    }
+
+    public static AliYunDriverClientService getInstance() {
+        return Holder.sAliYunDriverClientService;
+    }
+
     private static final Logger LOGGER = LoggerFactory.getLogger(AliYunDriverClientService.class);
     private static ObjectMapper objectMapper = new ObjectMapper();
     private static String rootPath = "/";
     private static int chunkSize = 10485760; // 10MB
     private TFile rootTFile = null;
 
-    private static Cache<String, Set<TFile>> tFilesCache = Caffeine.newBuilder()
+    private static LoadingCache<String, Set<TFile>> tFilesCache = CacheBuilder.newBuilder()
             .initialCapacity(128)
             .maximumSize(1024)
             .expireAfterWrite(1, TimeUnit.MINUTES)
-            .build();
+            .build(new CacheLoader<String, Set<TFile>>() {
+                @Override
+                public Set<TFile> load(String key) throws Exception {
+                    // 获取真实的文件列表
+                    return AliYunDriverClientService.getInstance().getTFiles2(key);
+                }
+            });
 
     private final AliYunDriverClient client;
 
-    @Autowired
-    private VirtualTFileService virtualTFileService;
+    private VirtualTFileService virtualTFileService = VirtualTFileService.getInstance();
 
     public AliYunDriverClientService(AliYunDriverClient aliYunDriverClient) {
         this.client = aliYunDriverClient;
         AliYunDriverFileSystemStore.setBean(this);
     }
 
-    public Set<TFile> getTFiles(String nodeId) {
-        Set<TFile> tFiles = tFilesCache.get(nodeId, key -> {
-            // 获取真实的文件列表
-            return getTFiles2(nodeId);
-        });
-        Set<TFile> all = new LinkedHashSet<>(tFiles);
-        // 获取上传中的文件列表
-        Collection<TFile> virtualTFiles = virtualTFileService.list(nodeId);
-        all.addAll(virtualTFiles);
-        return all;
+    public Set<TFile> getTFiles(final String nodeId) {
+        try {
+            Set<TFile> tFiles = tFilesCache.get(nodeId);
+            Set<TFile> all = new LinkedHashSet<>(tFiles);
+            // 获取上传中的文件列表
+            Collection<TFile> virtualTFiles = virtualTFileService.list(nodeId);
+            all.addAll(virtualTFiles);
+            return all;
+        } catch (ExecutionException e) {
+            throw new RuntimeException(e);
+        }
     }
 
     private Set<TFile> getTFiles2(String nodeId) {
@@ -88,7 +120,7 @@ public class AliYunDriverClientService {
         TFileListResult<TFile> tFileListResult = JsonUtil.readValue(json, new TypeReference<TFileListResult<TFile>>() {
         });
         all.addAll(tFileListResult.getItems());
-        if (!StringUtils.hasLength(tFileListResult.getNext_marker())) {
+        if (StringUtils.isEmpty(tFileListResult.getNext_marker())) {
             return all;
         }
         return fileListFromApi(nodeId, tFileListResult.getNext_marker(), all);
@@ -293,7 +325,7 @@ public class AliYunDriverClientService {
     }
 
     private TFile getNodeIdByPath2(String path) {
-        if (!StringUtils.hasLength(path)) {
+        if (StringUtils.isEmpty(path)) {
             path = rootPath;
         }
         if (path.equals(rootPath)) {

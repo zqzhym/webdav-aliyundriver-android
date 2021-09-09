@@ -6,12 +6,10 @@ import net.sf.webdav.exceptions.WebdavException;
 import okhttp3.*;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
-import org.springframework.util.Assert;
-import org.springframework.util.StringUtils;
+import org.apache.commons.lang3.StringUtils;
 
 import javax.servlet.http.HttpServletRequest;
 import java.io.IOException;
-import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
 import java.nio.file.LinkOption;
@@ -54,8 +52,8 @@ public class AliYunDriverClient {
                     }
                     String accessToken = (String) JsonUtil.getJsonNodeValue(refreshTokenResult, "access_token");
                     String refreshToken = (String) JsonUtil.getJsonNodeValue(refreshTokenResult, "refresh_token");
-                    Assert.hasLength(accessToken, "获取accessToken失败");
-                    Assert.hasLength(refreshToken, "获取refreshToken失败");
+                    if (StringUtils.isEmpty(accessToken)) throw new IllegalArgumentException("获取accessToken失败");
+                    if (StringUtils.isEmpty(refreshToken)) throw new IllegalArgumentException("获取refreshToken失败");
                     aliYunDriveProperties.setAuthorization(accessToken);
                     writeRefreshToken(refreshToken);
                     return response.request().newBuilder()

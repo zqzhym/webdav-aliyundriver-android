@@ -1,13 +1,17 @@
 package com.github.zxbu.webdavteambition.filter;
 
 import net.sf.webdav.WebdavStatus;
-import org.apache.tomcat.util.http.fileupload.IOUtils;
-import org.springframework.core.io.ClassPathResource;
-import org.springframework.web.filter.OncePerRequestFilter;
 
+import org.apache.commons.io.IOUtils;
+import org.eclipse.jetty.webapp.WebAppContext;
+
+import javax.servlet.Filter;
 import javax.servlet.FilterChain;
+import javax.servlet.FilterConfig;
 import javax.servlet.ServletException;
 import javax.servlet.ServletOutputStream;
+import javax.servlet.ServletRequest;
+import javax.servlet.ServletResponse;
 import javax.servlet.http.HttpServletRequest;
 import javax.servlet.http.HttpServletResponse;
 import javax.servlet.http.HttpServletResponseWrapper;
@@ -16,25 +20,32 @@ import java.io.InputStream;
 import java.io.PrintWriter;
 import java.nio.charset.StandardCharsets;
 
-public class ErrorFilter extends OncePerRequestFilter {
+public class ErrorFilter implements Filter {
     private static final String errorPage = readErrorPage();
 
     private static String readErrorPage() {
         try {
-            ClassPathResource classPathResource = new ClassPathResource("error.xml");
-            InputStream inputStream = classPathResource.getInputStream();
-            byte[] buffer = new byte[(int) classPathResource.contentLength()];
-            IOUtils.readFully(inputStream, buffer);
-            return new String(buffer, StandardCharsets.UTF_8);
+            InputStream inputStream = WebAppContext.getCurrentContext().getResourceAsStream("/WEB-INF/lib/error.xml");
+            return IOUtils.toString(inputStream, StandardCharsets.UTF_8);
         } catch (IOException e) {
-            return "";
+            throw new RuntimeException("Error in reading error.xml");
         }
     }
 
     @Override
-    protected void doFilterInternal(HttpServletRequest httpServletRequest, HttpServletResponse httpServletResponse, FilterChain filterChain) throws ServletException, IOException {
-        ErrorWrapperResponse wrapperResponse = new ErrorWrapperResponse(httpServletResponse);
+    public void init(FilterConfig filterConfig) throws ServletException {
 
+    }
+
+    @Override
+    public void doFilter(ServletRequest request, ServletResponse response, FilterChain filterChain) throws IOException, ServletException {
+        if (response instanceof HttpServletResponse && request instanceof HttpServletRequest) {
+        } else {
+            return;
+        }
+        HttpServletResponse httpServletResponse = (HttpServletResponse) response;
+        HttpServletRequest httpServletRequest = (HttpServletRequest) request;
+        ErrorWrapperResponse wrapperResponse = new ErrorWrapperResponse(httpServletResponse);
         try {
             filterChain.doFilter(httpServletRequest, wrapperResponse);
             if (wrapperResponse.hasErrorToSend()) {
@@ -58,6 +69,11 @@ public class ErrorFilter extends OncePerRequestFilter {
             httpServletResponse.getWriter().write(t.getMessage());
             httpServletResponse.flushBuffer();
         }
+    }
+
+    @Override
+    public void destroy() {
+
     }
 
     private static class ErrorWrapperResponse extends HttpServletResponseWrapper {

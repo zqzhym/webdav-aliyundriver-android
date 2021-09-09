@@ -3,7 +3,6 @@ package com.github.zxbu.webdavteambition.store;
 import com.github.zxbu.webdavteambition.model.FileType;
 import com.github.zxbu.webdavteambition.model.result.TFile;
 import com.github.zxbu.webdavteambition.model.result.UploadPreResult;
-import org.springframework.stereotype.Service;
 
 import java.util.Collection;
 import java.util.Collections;
@@ -14,8 +13,16 @@ import java.util.concurrent.ConcurrentHashMap;
 /**
  * 虚拟文件（用于上传时，列表展示）
  */
-@Service
 public class VirtualTFileService {
+
+    private static class Holder {
+        private static VirtualTFileService sVirtualTFileService = new VirtualTFileService();
+    }
+
+    public static VirtualTFileService getInstance() {
+        return Holder.sVirtualTFileService;
+    }
+
     private final Map<String, Map<String, TFile>> virtualTFileMap = new ConcurrentHashMap<>();
 
     /**
