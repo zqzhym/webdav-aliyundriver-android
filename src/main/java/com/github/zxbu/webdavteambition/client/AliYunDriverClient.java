@@ -4,11 +4,15 @@ import com.github.zxbu.webdavteambition.config.AliYunDriveProperties;
 import com.github.zxbu.webdavteambition.util.JsonUtil;
 import net.sf.webdav.exceptions.WebdavException;
 import okhttp3.*;
+
+import org.apache.commons.io.FileUtils;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.apache.commons.lang3.StringUtils;
 
 import javax.servlet.http.HttpServletRequest;
+
+import java.io.File;
 import java.io.IOException;
 import java.nio.charset.StandardCharsets;
 import java.nio.file.Files;
@@ -16,11 +20,13 @@ import java.nio.file.LinkOption;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.util.Collections;
+import java.util.Iterator;
 import java.util.Map;
 import java.util.concurrent.TimeUnit;
 
 public class AliYunDriverClient {
     private static final Logger LOGGER = LoggerFactory.getLogger(AliYunDriverClient.class);
+    private static final String REFRESH_TOKEN_FILE_NAME = "refresh-token";
     private OkHttpClient okHttpClient;
     private AliYunDriveProperties aliYunDriveProperties;
 
@@ -174,7 +180,13 @@ public class AliYunDriverClient {
     public String get(String url, Map<String, String> params)  {
         try {
             HttpUrl.Builder urlBuilder = HttpUrl.parse(getTotalUrl(url)).newBuilder();
-            params.forEach(urlBuilder::addQueryParameter);
+            Iterator<Map.Entry<String, String>> it = params.entrySet().iterator();
+            while (it.hasNext()) {
+                Map.Entry<String, String> entry = it.next();
+                String name = entry.getKey();
+                String value = entry.getValue();
+                urlBuilder.addQueryParameter(name, value);
+            }
 
             Request request = new Request.Builder().get().url(urlBuilder.build()).build();
             try (Response response = okHttpClient.newCall(request).execute()){
@@ -206,45 +218,38 @@ public class AliYunDriverClient {
     }
 
     private void deleteRefreshTokenFile() {
-        String refreshTokenPath = aliYunDriveProperties.getWorkDir() + "refresh-token";
-        Path path = Paths.get(refreshTokenPath);
-        try {
-            Files.delete(path);
-        } catch (IOException e) {
-            e.printStackTrace();
-        }
+        new File(aliYunDriveProperties.getWorkDir(), REFRESH_TOKEN_FILE_NAME).delete();
     }
 
     private String readRefreshToken() {
-        String refreshTokenPath = aliYunDriveProperties.getWorkDir() + "refresh-token";
-        Path path = Paths.get(refreshTokenPath);
+        File refreshTokenFile = new File(aliYunDriveProperties.getWorkDir(), REFRESH_TOKEN_FILE_NAME);
 
-        if (!Files.exists(path, LinkOption.NOFOLLOW_LINKS)) {
+        if (!refreshTokenFile.exists()) {
+            refreshTokenFile.getParentFile().mkdirs();
             try {
-                Files.createDirectories(path.getParent());
-                Files.createFile(path);
+                FileUtils.write(refreshTokenFile, "", StandardCharsets.UTF_8);
             } catch (IOException e) {
-                e.printStackTrace();
+                LOGGER.error("Error: touch refreshTokenFile failed", e);
             }
         }
         try {
-            byte[] bytes = Files.readAllBytes(path);
+            byte[] bytes = FileUtils.readFileToByteArray(refreshTokenFile);
             if (bytes.length != 0) {
                 return new String(bytes, StandardCharsets.UTF_8);
             }
         } catch (IOException e) {
-            LOGGER.warn("读取refreshToken文件 {} 失败: ", refreshTokenPath, e);
+            LOGGER.warn("读取refreshToken文件 {} 失败: ", refreshTokenFile.getAbsolutePath(), e);
         }
         writeRefreshToken(aliYunDriveProperties.getRefreshToken());
         return aliYunDriveProperties.getRefreshToken();
     }
 
     private void writeRefreshToken(String newRefreshToken) {
-        String refreshTokenPath = aliYunDriveProperties.getWorkDir() + "refresh-token";
+        File refreshTokenFile = new File(aliYunDriveProperties.getWorkDir(), REFRESH_TOKEN_FILE_NAME);
         try {
-            Files.write(Paths.get(refreshTokenPath), newRefreshToken.getBytes(StandardCharsets.UTF_8));
+            FileUtils.write(refreshTokenFile, newRefreshToken, StandardCharsets.UTF_8);
         } catch (IOException e) {
-            LOGGER.warn("写入refreshToken文件 {} 失败: ", refreshTokenPath, e);
+            LOGGER.warn("写入refreshToken文件 {} 失败: ", refreshTokenFile.getAbsolutePath(), e);
         }
         aliYunDriveProperties.setRefreshToken(newRefreshToken);
     }

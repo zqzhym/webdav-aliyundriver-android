@@ -97,7 +97,7 @@ public class AliYunDriverClientService {
 
     private Set<TFile> getTFiles2(String nodeId) {
         List<TFile> tFileList = fileListFromApi(nodeId, null, new ArrayList<>());
-        tFileList.sort(Comparator.comparing(TFile::getUpdated_at).reversed());
+        Collections.sort(tFileList, (o1, o2) -> o2.getUpdated_at().compareTo(o1.getUpdated_at()));
         Set<TFile> tFileSets = new LinkedHashSet<>();
         for (TFile tFile : tFileList) {
             if (!tFileSets.add(tFile)) {
@@ -133,11 +133,14 @@ public class AliYunDriverClientService {
             Map<String, Object> rawMap = objectMapper.readValue(json, new TypeReference<Map<String, Object>>() {
             });
             Map<String, String> stringMap = new LinkedHashMap<>();
-            rawMap.forEach((s, o1) -> {
-                if (o1 != null) {
-                    stringMap.put(s, o1.toString());
+            for (Map.Entry<String, Object> entry : rawMap.entrySet()) {
+                String s = entry.getKey();
+                Object o1 = entry.getValue();
+                if (o1 == null) {
+                    continue;
                 }
-            });
+                stringMap.put(s, o1.toString());
+            }
             return stringMap;
         } catch (Exception e) {
             throw new WebdavException(e);
@@ -205,7 +208,17 @@ public class AliYunDriverClientService {
                     UploadPreResult refreshResult = JsonUtil.readValue(refreshJson, UploadPreResult.class);
                     for (int j = i; j < partInfoList.size(); j++) {
                         UploadPreRequest.PartInfo oldInfo = partInfoList.get(j);
-                        UploadPreRequest.PartInfo newInfo = refreshResult.getPart_info_list().stream().filter(p -> p.getPart_number().equals(oldInfo.getPart_number())).findAny().orElseThrow(NullPointerException::new);
+                        UploadPreRequest.PartInfo newInfo = null;
+                        List<UploadPreRequest.PartInfo> list = refreshResult.getPart_info_list();
+                        for (UploadPreRequest.PartInfo p : list) {
+                            if (p.getPart_number().equals(oldInfo.getPart_number())) {
+                                newInfo = p;
+                                break;
+                            }
+                        }
+                        if (newInfo == null) {
+                            throw new NullPointerException("newInfo is null");
+                        }
                         oldInfo.setUpload_url(newInfo.getUpload_url());
                     }
                 }

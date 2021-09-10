@@ -9,6 +9,8 @@ import net.sf.webdav.StoredObject;
 import net.sf.webdav.Transaction;
 import net.sf.webdav.exceptions.WebdavException;
 import okhttp3.Response;
+
+import org.apache.commons.lang3.StringUtils;
 import org.eclipse.jetty.http.HttpHeaders;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -19,7 +21,10 @@ import java.io.File;
 import java.io.IOException;
 import java.io.InputStream;
 import java.security.Principal;
+import java.util.ArrayList;
 import java.util.Enumeration;
+import java.util.Iterator;
+import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 
@@ -91,8 +96,11 @@ public class AliYunDriverFileSystemStore implements IWebdavStore {
         long size = getResourceLength(transaction, resourceUri);
         Response downResponse = aliYunDriverClientService.download(resourceUri, transaction.getRequest(), size);
         response.setHeader(HttpHeaders.CONTENT_LENGTH, String.valueOf(downResponse.body().contentLength()));
-        LOGGER.debug("{} code = {}", resourceUri, downResponse.code());
         for (String name : downResponse.headers().names()) {
+            //Fix Winscp Invalid Content-Length in response
+            if (HttpHeaders.CONTENT_LENGTH.equalsIgnoreCase(name)) {
+                continue;
+            }
             LOGGER.debug("{} downResponse: {} = {}", resourceUri, name, downResponse.header(name));
             response.addHeader(name, downResponse.header(name));
         }
@@ -109,8 +117,10 @@ public class AliYunDriverFileSystemStore implements IWebdavStore {
 
         long contentLength = request.getContentLength();
         if (contentLength < 0) {
-            contentLength = Long.parseLong(Optional.ofNullable(request.getHeader("content-length"))
-                    .orElse(request.getHeader("X-Expected-Entity-Length")));
+            contentLength = Long.parseLong(StringUtils.defaultIfEmpty(request.getHeader("content-length"), "-1"));
+            if (contentLength < 0) {
+                contentLength = Long.parseLong(StringUtils.defaultIfEmpty(request.getHeader("X-Expected-Entity-Length"), "-1"));
+            }
         }
         aliYunDriverClientService.uploadPre(resourceUri, contentLength, content);
 
@@ -138,7 +148,12 @@ public class AliYunDriverFileSystemStore implements IWebdavStore {
             return new String[0];
         }
         Set<TFile> tFileList = aliYunDriverClientService.getTFiles(tFile.getFile_id());
-        return tFileList.stream().map(TFile::getName).toArray(String[]::new);
+        List<String> nameList = new ArrayList<>();
+        for (TFile file : tFileList) {
+            tFile = file;
+            nameList.add(tFile.getName());
+        }
+        return nameList.toArray(new String[nameList.size()]);
     }
 
 

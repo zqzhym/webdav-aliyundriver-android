@@ -130,8 +130,7 @@ public class DoHead extends AbstractMethod {
                             if (_contentLength == 1) {
                                 if (resourceLength > 0) {
                                     if (resourceLength <= Integer.MAX_VALUE) {
-                                        resp
-                                                .setContentLength((int) resourceLength);
+                                        resp.setContentLength((int) resourceLength);
                                     } else {
                                         resp.setHeader("content-length", ""
                                                 + resourceLength);

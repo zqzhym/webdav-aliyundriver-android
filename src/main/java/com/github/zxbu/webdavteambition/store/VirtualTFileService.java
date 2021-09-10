@@ -29,7 +29,11 @@ public class VirtualTFileService {
      * 创建文件
      */
     public void createTFile(String parentId, UploadPreResult uploadPreResult) {
-        Map<String, TFile> tFileMap = virtualTFileMap.computeIfAbsent(parentId, s -> new ConcurrentHashMap<>());
+        Map<String, TFile> tFileMap = virtualTFileMap.get(parentId);
+        if (tFileMap == null) {
+            tFileMap = new ConcurrentHashMap<>();
+            virtualTFileMap.put(parentId, tFileMap);
+        }
         tFileMap.put(uploadPreResult.getFile_id(), convert(uploadPreResult));
     }
 
