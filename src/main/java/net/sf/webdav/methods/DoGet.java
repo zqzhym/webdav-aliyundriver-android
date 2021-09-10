@@ -15,6 +15,8 @@
  */
 package net.sf.webdav.methods;
 
+import java.io.BufferedInputStream;
+import java.io.BufferedOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
 import java.io.OutputStream;
@@ -61,31 +63,28 @@ public class DoGet extends DoHead {
                 return;
             }
             OutputStream out = resp.getOutputStream();
+            BufferedOutputStream bos = new BufferedOutputStream(out, 64*1024);
             InputStream in = _store.getResourceContent(transaction, path);
+            BufferedInputStream bis = new BufferedInputStream(in, 64*1024);
             try {
                 if (in != null) {
                     LOG.debug("开始 {}, ", path);
-                    IOUtils.copyLarge(in, out);
+                    IOUtils.copyLarge(bis, bos);
                     LOG.debug("结束 {}", path);
                 }
             } finally {
                 // flushing causes a IOE if a file is opened on the webserver
                 // client disconnected before server finished sending response
+                IOUtils.closeQuietly(bis);
+                IOUtils.closeQuietly(in);
                 try {
-                    if (in != null) {
-                        in.close();
-                    }
-                } catch (Exception e) {
-                    LOG.warn("{} Closing InputStream causes Exception!\n", path
-                            ,e);
-                }
-                try {
-                    out.flush();
-                    out.close();
+                    bos.flush();
                 } catch (Exception e) {
                     LOG.warn("{} Flushing OutputStream causes Exception!\n", path
                             ,e);
                 }
+                IOUtils.closeQuietly(bos);
+                IOUtils.closeQuietly(out);
             }
         } catch (Exception e) {
             LOG.warn("{} doBody causes Exception!\n", path
