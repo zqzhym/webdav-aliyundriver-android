@@ -30,7 +30,7 @@ android {
 }
 
 dependencies {
-    compileOnly 'com.squareup.okhttp3:okhttp:3.12.8' //Api19
+    compileOnly 'com.squareup.okhttp3:okhttp:3.12.13' //Api19
     implementation 'com.google.guava:guava:30.1.1-android'
     implementation 'org.apache.commons:commons-lang3:3.8'  //java7
     implementation 'commons-io:commons-io:2.6' //java7
