@@ -36,6 +36,7 @@ import net.sf.webdav.StoredObject;
 import net.sf.webdav.WebdavStatus;
 import net.sf.webdav.locking.ResourceLocks;
 import org.apache.commons.io.IOUtils;
+import org.eclipse.jetty.io.EofException;
 
 public class DoGet extends DoHead {
 
@@ -79,13 +80,12 @@ public class DoGet extends DoHead {
                 IOUtils.closeQuietly(in);
                 try {
                     bos.flush();
-                } catch (Exception e) {
-                    LOG.warn("{} Flushing OutputStream causes Exception!\n", path
-                            ,e);
+                } catch (Exception ignored) {
                 }
                 IOUtils.closeQuietly(bos);
                 IOUtils.closeQuietly(out);
             }
+        } catch (EofException ignore) {
         } catch (Exception e) {
             LOG.warn("{} doBody causes Exception!\n", path
                     ,e);

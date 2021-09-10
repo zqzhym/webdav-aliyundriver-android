@@ -66,7 +66,10 @@ public class ErrorFilter implements Filter {
             httpServletResponse.flushBuffer();
         } catch (Throwable t) {
             httpServletResponse.setStatus(500);
-            httpServletResponse.getWriter().write(t.getMessage());
+            try {
+                httpServletResponse.getWriter().write(String.valueOf(t.getMessage()));
+            } catch (Throwable ignore) {
+            }
             httpServletResponse.flushBuffer();
         }
     }
