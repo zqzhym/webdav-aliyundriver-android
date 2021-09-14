@@ -160,10 +160,6 @@ public class AliYunDriverFileSystemStore implements IWebdavStore {
 
     @Override
     public long getResourceLength(ITransaction transaction, String path) {
-        return getResourceLength2(transaction, path);
-    }
-
-    public long getResourceLength2(ITransaction transaction, String path) {
         LOGGER.info("getResourceLength: {}", path);
         TFile tFile = aliYunDriverClientService.getTFileByPath(path);
         if (tFile == null || tFile.getSize() == null) {
@@ -200,21 +196,21 @@ public class AliYunDriverFileSystemStore implements IWebdavStore {
 
     @Override
     public StoredObject getStoredObject(ITransaction transaction, String uri) {
-
-
         LOGGER.info("getStoredObject: {}", uri);
         TFile tFile = aliYunDriverClientService.getTFileByPath(uri);
-        if (tFile != null) {
-            StoredObject so = new StoredObject();
-            so.setFolder(tFile.getType().equalsIgnoreCase("folder"));
-            so.setResourceLength(getResourceLength2(transaction, uri));
-            so.setCreationDate(tFile.getCreated_at());
-            so.setLastModified(tFile.getUpdated_at());
-            return so;
+        if (tFile == null) {
+            return null;
         }
-
-        return null;
+        StoredObject so = new StoredObject();
+        if ("folder".equalsIgnoreCase(tFile.getType())) {
+            so.setFolder(true);
+            so.setResourceLength(0);
+        } else {
+            so.setFolder(false);
+            so.setResourceLength(tFile.getSize());
+        }
+        so.setCreationDate(tFile.getCreated_at());
+        so.setLastModified(tFile.getUpdated_at());
+        return so;
     }
-
-
 }
