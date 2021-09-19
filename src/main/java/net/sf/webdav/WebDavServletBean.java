@@ -113,6 +113,9 @@ public class WebDavServletBean extends HttpServlet {
             return;
         }
 
+        if (_store == null) {
+            LOG.error("refresh_token is not valid");
+        }
         try {
             Principal userPrincipal = getUserPrincipal(req);
             transaction = _store.begin(userPrincipal, req, resp);
