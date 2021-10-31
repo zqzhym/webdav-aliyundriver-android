@@ -29,3 +29,4 @@
 -keep class net.sf.webdav.WebdavServlet
 -keep class com.github.zxbu.webdavteambition.store.AliYunDriverFileSystemStore
 -keep class com.github.zxbu.webdavteambition.filter.ErrorFilter
+-keep class com.github.zxbu.webdavteambition.store.StartupService

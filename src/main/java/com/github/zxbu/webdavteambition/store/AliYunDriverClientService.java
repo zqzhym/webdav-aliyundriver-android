@@ -38,21 +38,21 @@ import java.util.concurrent.TimeUnit;
 
 public class AliYunDriverClientService {
 
-    private static class Holder {
-        private static AliYunDriverClientService sAliYunDriverClientService;
-
-        static {
-            ContextHandler.Context webContext = WebAppContext.getCurrentContext();
-            Context context = (Context) webContext.getAttribute("org.mortbay.ijetty.context");
-            AliYunDriveProperties properties = new AliYunDriveProperties();
-            properties.setRefreshToken(String.valueOf(webContext.getAttribute(context.getString(net.xdow.library.R.string.config_refresh_token))));
-            properties.setWorkDir(context.getFilesDir().getAbsolutePath() + File.separator);
-            sAliYunDriverClientService = new AliYunDriverClientService(new AliYunDriverClient(properties));
-        }
-    }
-
+    private static AliYunDriverClientService sInstance;
     public static AliYunDriverClientService getInstance() {
-        return Holder.sAliYunDriverClientService;
+        if (sInstance == null) {
+            synchronized (AliYunDriverClientService.class) {
+                if (sInstance == null) {
+                    ContextHandler.Context webContext = WebAppContext.getCurrentContext();
+                    Context context = (Context) webContext.getAttribute("org.mortbay.ijetty.context");
+                    AliYunDriveProperties properties = new AliYunDriveProperties();
+                    properties.setRefreshToken(String.valueOf(webContext.getAttribute(context.getString(net.xdow.library.R.string.config_refresh_token))));
+                    properties.setWorkDir(context.getFilesDir().getAbsolutePath() + File.separator);
+                    sInstance = new AliYunDriverClientService(new AliYunDriverClient(properties));
+                }
+            }
+        }
+        return sInstance;
     }
 
     private static final Logger LOGGER = LoggerFactory.getLogger(AliYunDriverClientService.class);
