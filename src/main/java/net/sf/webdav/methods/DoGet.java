@@ -208,7 +208,7 @@ public class DoGet extends DoHead {
     /**
      * Return the CSS styles used to display the HTML representation
      * of the webdav content.
-     * 
+     *
      * @return
      */
     protected String getCSS()
@@ -270,7 +270,7 @@ public class DoGet extends DoHead {
 
     /**
      * Return the header to be displayed in front of the folder content
-     * 
+     *
      * @param transaction
      * @param path
      * @param resp
@@ -285,7 +285,7 @@ public class DoGet extends DoHead {
 
     /**
      * Return the footer to be displayed after the folder content
-     * 
+     *
      * @param transaction
      * @param path
      * @param resp
