@@ -52,6 +52,6 @@ jobs:
 
         with:
 
-          name: com.github.tvbox.osc
+          name: com.github.webdav.osc
 
           path: ${{ github.workspace }}/apk/*
